@@ -13,49 +13,51 @@ export const Destination = {
     const params = [];
 
     if (division) {
-      sql += " AND division = ?";
+      sql += ` AND division = $${params.length + 1}`;
       params.push(division);
     }
     if (district) {
-      sql += " AND district LIKE ?";
+      sql += ` AND district ILIKE $${params.length + 1}`;
       params.push(`%${district}%`);
     }
     if (category) {
-      sql += " AND category = ?";
+      sql += ` AND category = $${params.length + 1}`;
       params.push(category);
     }
     if (q) {
-      sql +=
-        " AND (name LIKE ? OR short_description LIKE ? OR description LIKE ?)";
+      const start = params.length + 1;
+      sql += ` AND (name ILIKE $${start} OR short_description ILIKE $${start + 1} OR description ILIKE $${start + 2})`;
       params.push(`%${q}%`, `%${q}%`, `%${q}%`);
     }
     sql += " ORDER BY created_at DESC";
 
-    const [rows] = await pool.query(sql, params);
-    return rows;
+    const result = await pool.query(sql, params);
+    return result.rows;
   },
 
   async findBySlug(slug) {
-    const [rows] = await pool.query(
-      "SELECT * FROM destinations WHERE slug = ?",
+    const result = await pool.query(
+      "SELECT * FROM destinations WHERE slug = $1",
       [slug],
     );
-    return rows[0];
+    return result.rows[0];
   },
 
   async findById(id) {
-    const [rows] = await pool.query("SELECT * FROM destinations WHERE id = ?", [
-      id,
-    ]);
-    return rows[0];
+    const result = await pool.query(
+      "SELECT * FROM destinations WHERE id = $1",
+      [id],
+    );
+    return result.rows[0];
   },
 
   async create(data, userId) {
     const slug = slugify(data.name);
-    const [result] = await pool.query(
+    const result = await pool.query(
       `INSERT INTO destinations
         (name, slug, division, district, category, short_description, description, how_to_reach, best_time_to_visit, entry_fee, image_url, latitude, longitude, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       RETURNING id`,
       [
         data.name,
         slug,
@@ -73,7 +75,7 @@ export const Destination = {
         userId,
       ],
     );
-    return this.findById(result.insertId);
+    return this.findById(result.rows[0].id);
   },
 
   async update(id, data) {
@@ -96,25 +98,25 @@ export const Destination = {
 
     for (const key of allowed) {
       if (data[key] !== undefined) {
-        fields.push(`${key} = ?`);
+        fields.push(`${key} = $${params.length + 1}`);
         params.push(data[key]);
       }
     }
     if (data.name) {
-      fields.push("slug = ?");
+      fields.push(`slug = $${params.length + 1}`);
       params.push(slugify(data.name));
     }
     if (!fields.length) return this.findById(id);
 
     params.push(id);
     await pool.query(
-      `UPDATE destinations SET ${fields.join(", ")} WHERE id = ?`,
+      `UPDATE destinations SET ${fields.join(", ")}, updated_at = NOW() WHERE id = $${params.length}`,
       params,
     );
     return this.findById(id);
   },
 
   async remove(id) {
-    await pool.query("DELETE FROM destinations WHERE id = ?", [id]);
+    await pool.query("DELETE FROM destinations WHERE id = $1", [id]);
   },
 };
