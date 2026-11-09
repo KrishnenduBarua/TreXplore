@@ -1,31 +1,63 @@
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
 
-import authRoutes from './routes/authRoutes.js';
-import destinationRoutes from './routes/destinationRoutes.js';
-import blogRoutes from './routes/blogRoutes.js';
-import userRoutes from './routes/userRoutes.js';
-import favoriteRoutes from './routes/favoriteRoutes.js';
-import recommendationRoutes from './routes/recommendationRoutes.js';
-import { notFound, errorHandler } from './middleware/errorMiddleware.js';
+import authRoutes from "./routes/authRoutes.js";
+import destinationRoutes from "./routes/destinationRoutes.js";
+import blogRoutes from "./routes/blogRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import favoriteRoutes from "./routes/favoriteRoutes.js";
+import recommendationRoutes from "./routes/recommendationRoutes.js";
+import visitRoutes from "./routes/visitRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
+import { ensureTables } from "./config/ensureTables.js";
+import pool from "./config/db.js";
+import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
+const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim());
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin))
+        return callback(null, true);
+      return callback(new Error("Origin is not allowed by CORS"));
+    },
+  }),
+);
 app.use(express.json());
 
-app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'TreXplore API' }));
+app.get("/api/health", (req, res) =>
+  res.json({ status: "ok", service: "TreXplore API" }),
+);
 
-app.use('/api/auth', authRoutes);
-app.use('/api/destinations', destinationRoutes);
-app.use('/api/blogs', blogRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/favorites', favoriteRoutes);
-app.use('/api/recommendations', recommendationRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/destinations", destinationRoutes);
+app.use("/api/blogs", blogRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/favorites", favoriteRoutes);
+app.use("/api/visits", visitRoutes);
+app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/uploads", uploadRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`TreXplore API running on port ${PORT}`));
+
+// Start only after the database is reachable and the required tables exist.
+ensureTables()
+  .then(() => {
+    console.log("Database tables ready");
+    app.listen(PORT, () =>
+      console.log(`TreXplore API running on port ${PORT}`),
+    );
+  })
+  .catch(async (err) => {
+    console.error("[startup] Database initialization failed:", err.message);
+    await pool.end();
+    process.exitCode = 1;
+  });

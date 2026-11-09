@@ -115,7 +115,7 @@ test('describeTaste reports category shares that sum to ~100% and counts signals
   assert.equal(t.categories[0].name, 'Beach');
   const sum = t.categories.reduce((a, c) => a + c.percent, 0);
   assert.ok(sum >= 98 && sum <= 102);
-  assert.deepEqual(t.counts, { views: 2, saves: 1, stories: 1, searches: 1 });
+  assert.deepEqual(t.counts, { views: 2, saves: 1, stories: 1, visited: 0, searches: 1 });
 });
 
 test('handles events that point at deleted destinations without crashing', () => {
