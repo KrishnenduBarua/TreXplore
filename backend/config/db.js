@@ -1,15 +1,31 @@
-import mysql from 'mysql2/promise';
-import 'dotenv/config';
+import pg from "pg";
+import "dotenv/config";
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'trexplore',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error(
+    "DATABASE_URL is required. Set it to your Supabase PostgreSQL connection string in the backend environment.",
+  );
+}
+
+let databaseProtocol;
+try {
+  databaseProtocol = new URL(databaseUrl).protocol;
+} catch {
+  throw new Error(
+    "DATABASE_URL must be a valid PostgreSQL connection URL (postgres:// or postgresql://).",
+  );
+}
+if (databaseProtocol !== "postgres:" && databaseProtocol !== "postgresql:") {
+  throw new Error(
+    "DATABASE_URL must use the postgres:// or postgresql:// protocol.",
+  );
+}
+
+const pool = new pg.Pool({
+  connectionString: databaseUrl,
+  ssl: { rejectUnauthorized: false },
+  max: 10,
 });
 
 export default pool;

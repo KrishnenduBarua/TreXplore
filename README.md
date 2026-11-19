@@ -42,7 +42,7 @@ npm run seed
 
 Optionally seed three demo travelers (beach / heritage / nature lovers) so the
 AI recommendations have history to learn from — see
-[AI recommendations](#5-ai-travel-recommendations):
+[AI recommendations](#6-ai-travel-recommendations):
 
 ```bash
 npm run seed:demo
@@ -117,7 +117,7 @@ password in Vercel variables or commit them to GitHub.
 - Write, publish, and read travel blogs tied to a destination
 - Save favourite destinations
 - **AI recommendations** — personalised "For You" suggestions that learn from
-  each traveler's behaviour (see section 5)
+  each traveler's behaviour (see section 6)
 
 **Website management (admin role)**
 
@@ -171,11 +171,11 @@ destinations”, “Because you saved Sajek Valley”, …).
   activity counts), more suggestions, and saved places
 - **Destination page** — a Save button and “You might also like”
 
-**Upgrading an existing database.** Two tables were added (`favorites`,
-`user_events`). Re-run the schema — it is safe on an existing database:
+**Upgrading an existing database.** Recommendation and visit tables are included (`favorites`,
+`user_events`, `visited_places`). Re-run the schema — it is safe on an existing database:
 
 ```bash
-mysql -u root -p < backend/database/schema.sql
+psql "$DATABASE_URL" -f backend/database/schema.sql
 ```
 
 **Try it.** `npm run seed:demo` creates `beach@trexplore.com`,
@@ -218,10 +218,12 @@ cache the result per user for a few minutes.
 
 ## 8. Notes for extending this
 
-- Destination photos aren't wired up to real uploads yet — `image_url` and
-  `cover_image_url` columns exist in the schema, ready for a file-upload
-  route (the `multer` dependency is already in `backend/package.json`) or an
-  external image URL.
+- Image uploads are available at `POST /api/uploads/:kind` using a multipart
+  `file` field (up to 5 MB). Supported kinds are `blog`, `avatar`, and
+  `destination`; destination uploads require an admin. Configure Supabase
+  Storage before using uploads.
+- Signed-in travelers can mark visited destinations with `GET /api/visits`,
+  `POST /api/visits/:destinationId`, and `DELETE /api/visits/:destinationId`.
 - The proposal's "future work" list (online booking, interactive maps,
   weather updates, structured reviews) is a natural next milestone once the
   core CRUD flows above are stable.
